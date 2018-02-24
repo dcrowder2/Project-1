@@ -1,0 +1,147 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import random
+import math
+
+
+input_matrix = np.genfromtxt("normalized_data.txt")
+hidden_layer_neuron_count = 100
+batch_size = 300
+learning_rate = .01
+# letter_distribution is the number of each letter that are in the data set, used for making sure there is equal
+# representation for each letter, as the matrix is sorted by letter, the order is 1-26 = a-z
+# note: -1 is put in the 0 slot so it is a straight 1-26 a-z instead of 0-25, since the numbers saved in the text
+# file is numbered 1-26, -1 will throw an error, so it should never be used
+letter_distribution = [-1, 789, 766, 736, 805, 768, 775, 773, 734, 755, 747, 739, 761, 792, 783, 753, 803, 783, 758,
+                       748, 796, 813, 764, 752, 787, 786, 734]
+
+# all the back prop arrays are used to save values calculated in the feed through process to be used in the
+# back propagation, as the way weights are updated need these three values, and they are all going to be
+# 1-d arrays, so these will be 2-d arrays, or matrices
+back_prop_sigma = np.array([])  # sigma is the activation values from the hidden layer
+back_prop_sigma_prime = np.array([])  # sigma prime is the derivative of the sigma, which is calculated at the same time
+back_prop_delta = np.array([])
+# delta is the error value calculated from the output layer as the other values from the output layer are only needed to
+# calculate the delta, so only the delta is saved for back propagation
+
+# creating the layers for the ANN, there are 16 inputs for the hidden layer, and each neuron in the hidden layer
+# is an input for the output layer, so those to numbers are the same
+hidden_layer = np.random.randn(16, hidden_layer_neuron_count)
+output_layer = np.random.randn(hidden_layer_neuron_count, 26)
+bias = np.random.randn(1, 26)
+
+
+def sigmoid(number):
+    return 1/(1 + math.exp(-number))
+
+
+def sigmoid_prime(number):
+    return math.exp(-number)/((1+math.exp(-number))**2)
+
+
+def soft_max(array):
+    ret_array = []
+    exp_array = [math.exp(item) for item in array]
+    for thing in array:
+        soft = math.exp(thing)/math.fsum(exp_array)
+        ret_array.append(soft)
+    return ret_array
+
+
+def gradient_descent(output_array, sigma_array):
+    operand_1 = []
+    for number in output_array:
+        if number == max(output_array):
+            operand_1.append(.9)
+        else:
+            operand_1.append(.1)
+    return sigma_array - operand_1
+
+
+# creating the training and validation set, which are 80/20 for each letter, creating a 80/20 of the entire set that is
+# representative. I needed to convert the numpy arrays to lists so i could use the method I used to create
+# the validation set, I then make them a np array when I finish, distribution is made for the new sets, so batches can
+# be equal representation as well
+previous_index = 0
+training_set = []
+validation_set = []
+test = []
+training_distribution = []
+validation_distribution = []
+for item in input_matrix:
+    test.append(list(item))
+for instances in letter_distribution[1:]:
+    train_temp = random.sample(test[previous_index:previous_index + instances], int(instances * .8))
+    valid_temp = [item for item in test[previous_index:previous_index + instances] if item not in train_temp]
+    # create distribution of letters
+    training_distribution.append(len(train_temp))
+    validation_distribution.append(len(valid_temp))
+    # add the sets for each letter, remaking them as np arrays
+    training_set.extend(np.array(train_temp))
+    validation_set.extend(np.array(valid_temp))
+    # update the previous index so it will go to the next letter
+    previous_index = previous_index + instances
+# remake the sets as np arrays
+training_set = np.array(training_set)
+validation_set = np.array(validation_set)
+
+# total accuracy is the average accuracy for each letter, which is stored in the letter accuracy list
+total_accuracy = 0.
+letter_accuracy = [0] * 26
+
+accuracy = []
+epochs = []
+# vectorizing the sigmoid and sigmoid prime equations to run it on the sum for the batch
+vectorized_sigmoid = np.vectorize(sigmoid)
+vectorized_sigmoid_prime = np.vectorize(sigmoid_prime)
+
+# while total_accuracy < .85:
+for not_used in range(100):
+    epochs.append(not_used)
+    # Creating batches for training
+    batch = []
+    prev_index = 0
+    for instances in training_distribution:
+        batch_temp = random.sample(list(training_set[prev_index:prev_index + instances]), int(round(batch_size/26)))
+        batch.extend(np.array(batch_temp))
+        prev_index = prev_index + instances
+    batch = np.array(batch)
+    # getting the matrices for the hidden layer
+    sum_hidden = np.matmul(batch[:, 1:], hidden_layer)
+    sigma_hidden = vectorized_sigmoid(sum_hidden)
+    sigma_prime_hidden = vectorized_sigmoid_prime(sigma_hidden)
+
+    # getting the matrices for the output layer
+    sum_output = np.matmul(sigma_hidden, output_layer)
+    sigma_output = vectorized_sigmoid(sum_output)
+    sigma_prime_output = vectorized_sigmoid_prime(sigma_output)
+
+    # getting the accuracy and error
+    delta = []
+    sigma = []
+    sigma_prime = []
+    output = []
+    letter_count = [0] * 26
+    for item in sigma_output:
+        output.append(soft_max(item))
+    for index in range(len(output)):
+        if (output[index].index(max(output[index]))+1) == batch[index, 0]:
+            letter_count[int(batch[index, 0] - 1)] = letter_count[int(batch[index, 0] - 1)] + 1
+        sigma.append(sigma_hidden[index])
+        sigma_prime.append(sigma_prime_hidden[index])
+        delta.append(np.multiply(np.matmul(gradient_descent(output[index], sigma_output[index]), output_layer[index]), sigma_prime_output[index]))
+    for i in range(26):
+        temp = letter_count[i] / int(round(batch_size/26))
+        if max(letter_accuracy) == 0:
+            letter_accuracy[i] = temp
+        else:
+            letter_accuracy[i] = (letter_accuracy[i] + temp) / 2
+    accuracy.append(np.mean(letter_accuracy))
+    delta_weights_output = -learning_rate * np.matmul(np.transpose(sigma), delta)
+    delta_hidden = np.multiply(sigma_prime, np.matmul(delta, np.transpose(output_layer)))
+    delta_weights_hidden = -learning_rate * np.matmul(np.transpose(batch[:, 1:]), delta_hidden)
+    output_layer = output_layer + delta_weights_output
+    hidden_layer = hidden_layer + delta_weights_hidden
+    bias = bias - (learning_rate * sum(delta))
+plt.plot(epochs, accuracy)
+plt.show()
