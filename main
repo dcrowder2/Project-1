@@ -6,8 +6,8 @@ import math
 
 input_matrix = np.genfromtxt("normalized_data.txt")
 hidden_layer_neuron_count = 100
-batch_size = 300
-learning_rate = .01
+batch_size = 160
+mu = .01
 # letter_distribution is the number of each letter that are in the data set, used for making sure there is equal
 # representation for each letter, as the matrix is sorted by letter, the order is 1-26 = a-z
 # note: -1 is put in the 0 slot so it is a straight 1-26 a-z instead of 0-25, since the numbers saved in the text
@@ -26,9 +26,8 @@ back_prop_delta = np.array([])
 
 # creating the layers for the ANN, there are 16 inputs for the hidden layer, and each neuron in the hidden layer
 # is an input for the output layer, so those to numbers are the same
-hidden_layer = np.random.randn(16, hidden_layer_neuron_count)
-output_layer = np.random.randn(hidden_layer_neuron_count, 26)
-bias = np.random.randn(1, 26)
+W1 = np.random.randn(16, hidden_layer_neuron_count)
+W2 = np.random.randn(hidden_layer_neuron_count, 26)
 
 
 def sigmoid(number):
@@ -41,7 +40,7 @@ def sigmoid_prime(number):
 
 def soft_max(array):
     ret_array = []
-    exp_array = [math.exp(item) for item in array]
+    exp_array = [math.exp(number) for number in array]
     for thing in array:
         soft = math.exp(thing)/math.fsum(exp_array)
         ret_array.append(soft)
@@ -50,11 +49,14 @@ def soft_max(array):
 
 def gradient_descent(output_array, sigma_array):
     operand_1 = []
-    for number in output_array:
-        if number == max(output_array):
-            operand_1.append(.9)
-        else:
-            operand_1.append(.1)
+    for thing in output_array:
+        temp = []
+        for number in thing:
+            if number == max(thing):
+                temp.append(.9)
+            else:
+                temp.append(.1)
+        operand_1.append(temp)
     return sigma_array - operand_1
 
 
@@ -91,13 +93,16 @@ letter_accuracy = [0] * 26
 
 accuracy = []
 epochs = []
+epoch = 0
 # vectorizing the sigmoid and sigmoid prime equations to run it on the sum for the batch
 vectorized_sigmoid = np.vectorize(sigmoid)
 vectorized_sigmoid_prime = np.vectorize(sigmoid_prime)
 
 # while total_accuracy < .85:
-for not_used in range(100):
-    epochs.append(not_used)
+for not_used in range(10000):
+    if not_used % int(16000/batch_size) == 0:
+        epochs.append(epoch)
+        epoch += 1
     # Creating batches for training
     batch = []
     prev_index = 0
@@ -107,41 +112,38 @@ for not_used in range(100):
         prev_index = prev_index + instances
     batch = np.array(batch)
     # getting the matrices for the hidden layer
-    sum_hidden = np.matmul(batch[:, 1:], hidden_layer)
-    sigma_hidden = vectorized_sigmoid(sum_hidden)
-    sigma_prime_hidden = vectorized_sigmoid_prime(sigma_hidden)
+    S_1 = np.matmul(batch[:, 1:], W1)
+    Z_1 = vectorized_sigmoid(S_1)
+    Z_prime_1 = vectorized_sigmoid_prime(Z_1)
 
     # getting the matrices for the output layer
-    sum_output = np.matmul(sigma_hidden, output_layer)
-    sigma_output = vectorized_sigmoid(sum_output)
-    sigma_prime_output = vectorized_sigmoid_prime(sigma_output)
+    S_2 = np.matmul(Z_1, W2)
+    Z_2 = vectorized_sigmoid(S_2)
+    Z_prime_2 = vectorized_sigmoid_prime(Z_2)
 
     # getting the accuracy and error
-    delta = []
-    sigma = []
-    sigma_prime = []
     output = []
     letter_count = [0] * 26
-    for item in sigma_output:
+    for item in Z_2:
         output.append(soft_max(item))
     for index in range(len(output)):
-        if (output[index].index(max(output[index]))+1) == batch[index, 0]:
+        if (np.argmax(output[index])+1) == batch[index, 0]:
             letter_count[int(batch[index, 0] - 1)] = letter_count[int(batch[index, 0] - 1)] + 1
-        sigma.append(sigma_hidden[index])
-        sigma_prime.append(sigma_prime_hidden[index])
-        delta.append(np.multiply(np.matmul(gradient_descent(output[index], sigma_output[index]), output_layer[index]), sigma_prime_output[index]))
     for i in range(26):
         temp = letter_count[i] / int(round(batch_size/26))
         if max(letter_accuracy) == 0:
             letter_accuracy[i] = temp
         else:
             letter_accuracy[i] = (letter_accuracy[i] + temp) / 2
-    accuracy.append(np.mean(letter_accuracy))
-    delta_weights_output = -learning_rate * np.matmul(np.transpose(sigma), delta)
-    delta_hidden = np.multiply(sigma_prime, np.matmul(delta, np.transpose(output_layer)))
-    delta_weights_hidden = -learning_rate * np.matmul(np.transpose(batch[:, 1:]), delta_hidden)
-    output_layer = output_layer + delta_weights_output
-    hidden_layer = hidden_layer + delta_weights_hidden
-    bias = bias - (learning_rate * sum(delta))
+    if not_used % int(16000/batch_size) == 0:
+        accuracy.append(np.mean(letter_accuracy))
+    delta3 = np.transpose(gradient_descent(output, Z_2))
+
+    delta2 = np.matmul(W2, delta3)
+    delta2 = delta2 * np.transpose(Z_prime_1)
+    D_W_2 = -mu * np.transpose(np.matmul(delta3, Z_1))
+    D_W_1 = -mu * np.transpose(np.matmul(delta2, batch[:, 1:]))
+    W2 = W2 + D_W_2
+    W1 = W1 + D_W_1
 plt.plot(epochs, accuracy)
 plt.show()
