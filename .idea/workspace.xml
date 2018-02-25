@@ -3,7 +3,6 @@
   <component name="ChangeListManager">
     <list default="true" id="86c3c80e-d889-4610-b8a3-bfaeb7a7ecd3" name="Default" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change beforePath="$PROJECT_DIR$/main" afterPath="$PROJECT_DIR$/main" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
@@ -178,6 +177,14 @@
       <option name="presentableId" value="Default" />
       <updated>1519109543349</updated>
     </task>
+    <task id="LOCAL-00001" summary="Added Print messages">
+      <created>1519590295842</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1519590295842</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
   </component>
   <component name="ToolWindowManager">
@@ -204,6 +211,10 @@
   </component>
   <component name="VcsContentAnnotationSettings">
     <option name="myLimit" value="2678400000" />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="Added Print messages" />
+    <option name="LAST_COMMIT_MESSAGE" value="Added Print messages" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
